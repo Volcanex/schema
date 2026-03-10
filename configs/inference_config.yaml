@@ -1,0 +1,39 @@
+model:
+  path: ./models/schema-qwen-7b-lora
+  base_model: Qwen/Qwen2.5-VL-7B-Instruct
+  quantization: awq            # AWQ for inference (faster than bitsandbytes)
+  max_model_len: 4096
+  gpu_memory_utilization: 0.85
+  trust_remote_code: true
+
+sampling:
+  temperature: 0.1             # Low temp for deterministic structured output
+  max_tokens: 1024
+  top_p: 0.95
+  repetition_penalty: 1.05
+
+constrained_decoding:
+  enabled: true
+  backend: xgrammar            # xgrammar (default in vLLM) or outlines
+  grammar_type: json           # Constrain to valid JSON output
+
+serving:
+  host: 0.0.0.0
+  port: 8000
+  engine: vllm
+  max_concurrent_requests: 64
+  request_timeout: 60
+
+runpod_serverless:
+  gpu_type: NVIDIA L40S
+  workers_min: 0               # Scale to zero
+  workers_max: 4
+  idle_timeout: 60             # Seconds before scaling to zero
+  container_disk_gb: 50
+
+batch_processing:
+  batch_size: 32               # Pages per vLLM batch
+  concurrency: 8               # Parallel async requests to serverless endpoint
+  retry_attempts: 3
+  retry_delay: 2               # Seconds between retries
+  output_format: jsonl         # Output format for results

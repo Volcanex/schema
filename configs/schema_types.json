@@ -1,0 +1,133 @@
+{
+  "priority_types": {
+    "LocalBusiness": {
+      "subtypes": ["Restaurant", "FoodEstablishment", "Store", "Hotel", "LodgingBusiness",
+                   "MedicalBusiness", "HealthAndBeautyBusiness", "AutoDealer",
+                   "RealEstateAgent", "FinancialService", "LegalService", "HomeAndConstructionBusiness"],
+      "core_properties": ["name", "description", "url", "telephone", "email",
+                          "address", "geo", "openingHoursSpecification", "openingHours",
+                          "priceRange", "servesCuisine", "menu", "hasMap",
+                          "image", "logo", "sameAs", "currenciesAccepted",
+                          "paymentAccepted", "aggregateRating", "review"],
+      "required": ["@type", "@context", "name"],
+      "recommended": ["address", "telephone", "url", "image", "openingHours"]
+    },
+    "PostalAddress": {
+      "subtypes": [],
+      "core_properties": ["streetAddress", "addressLocality", "addressRegion",
+                          "postalCode", "addressCountry"],
+      "required": ["@type"],
+      "recommended": ["streetAddress", "addressLocality", "postalCode", "addressCountry"]
+    },
+    "Product": {
+      "subtypes": [],
+      "core_properties": ["name", "description", "image", "sku", "mpn", "brand",
+                          "offers", "aggregateRating", "review", "gtin8", "gtin13",
+                          "color", "material", "weight", "height", "width", "depth"],
+      "required": ["@type", "@context", "name"],
+      "recommended": ["image", "description", "offers", "brand", "sku"]
+    },
+    "Offer": {
+      "subtypes": [],
+      "core_properties": ["price", "priceCurrency", "availability", "url",
+                          "validFrom", "validThrough", "seller", "itemCondition",
+                          "shippingDetails", "hasMerchantReturnPolicy"],
+      "required": ["@type", "price", "priceCurrency"],
+      "recommended": ["price", "priceCurrency", "availability", "url"]
+    },
+    "Organization": {
+      "subtypes": ["Corporation", "EducationalOrganization", "GovernmentOrganization",
+                   "NGO", "SportsOrganization"],
+      "core_properties": ["name", "url", "logo", "description", "telephone", "email",
+                          "address", "foundingDate", "numberOfEmployees", "sameAs",
+                          "contactPoint", "member", "memberOf", "award"],
+      "required": ["@type", "@context", "name"],
+      "recommended": ["url", "logo", "description", "contactPoint", "sameAs"]
+    },
+    "Article": {
+      "subtypes": ["BlogPosting", "NewsArticle", "TechArticle", "ScholarlyArticle"],
+      "core_properties": ["headline", "description", "author", "publisher",
+                          "datePublished", "dateModified", "image", "url",
+                          "articleBody", "wordCount", "keywords", "inLanguage",
+                          "mainEntityOfPage", "isPartOf"],
+      "required": ["@type", "@context", "headline", "author", "datePublished"],
+      "recommended": ["headline", "author", "datePublished", "image", "publisher"]
+    },
+    "Event": {
+      "subtypes": ["MusicEvent", "SportsEvent", "TheaterEvent", "ExhibitionEvent",
+                   "Festival", "BusinessEvent", "ChildrensEvent", "ComedyEvent"],
+      "core_properties": ["name", "description", "startDate", "endDate", "location",
+                          "organizer", "performer", "offers", "image", "url",
+                          "eventStatus", "eventAttendanceMode", "inLanguage"],
+      "required": ["@type", "@context", "name", "startDate"],
+      "recommended": ["name", "startDate", "location", "offers", "description"]
+    },
+    "FAQPage": {
+      "subtypes": [],
+      "core_properties": ["mainEntity"],
+      "required": ["@type", "@context", "mainEntity"],
+      "recommended": ["mainEntity"]
+    },
+    "Question": {
+      "subtypes": [],
+      "core_properties": ["name", "acceptedAnswer", "suggestedAnswer"],
+      "required": ["@type", "name", "acceptedAnswer"],
+      "recommended": ["name", "acceptedAnswer"]
+    },
+    "Answer": {
+      "subtypes": [],
+      "core_properties": ["text"],
+      "required": ["@type", "text"],
+      "recommended": ["text"]
+    },
+    "Recipe": {
+      "subtypes": [],
+      "core_properties": ["name", "description", "image", "author", "datePublished",
+                          "prepTime", "cookTime", "totalTime", "recipeYield",
+                          "recipeIngredient", "recipeInstructions", "recipeCategory",
+                          "recipeCuisine", "nutrition", "aggregateRating"],
+      "required": ["@type", "@context", "name"],
+      "recommended": ["name", "image", "recipeIngredient", "recipeInstructions", "totalTime"]
+    },
+    "Person": {
+      "subtypes": [],
+      "core_properties": ["name", "givenName", "familyName", "email", "telephone",
+                          "url", "image", "jobTitle", "worksFor", "alumniOf",
+                          "birthDate", "description", "sameAs"],
+      "required": ["@type", "@context", "name"],
+      "recommended": ["name", "url", "image", "jobTitle", "sameAs"]
+    },
+    "WebPage": {
+      "subtypes": ["AboutPage", "ContactPage", "FAQPage", "ItemPage", "ProfilePage"],
+      "core_properties": ["name", "description", "url", "inLanguage", "isPartOf",
+                          "datePublished", "dateModified", "breadcrumb", "author",
+                          "primaryImageOfPage", "speakable"],
+      "required": ["@type", "@context"],
+      "recommended": ["name", "description", "url", "dateModified"]
+    },
+    "WebSite": {
+      "subtypes": [],
+      "core_properties": ["name", "url", "description", "inLanguage",
+                          "potentialAction", "publisher", "sameAs"],
+      "required": ["@type", "@context", "name", "url"],
+      "recommended": ["name", "url", "potentialAction"]
+    },
+    "BreadcrumbList": {
+      "subtypes": [],
+      "core_properties": ["itemListElement"],
+      "required": ["@type", "@context", "itemListElement"],
+      "recommended": ["itemListElement"]
+    },
+    "ListItem": {
+      "subtypes": [],
+      "core_properties": ["position", "item", "name"],
+      "required": ["@type", "position", "item"],
+      "recommended": ["position", "item", "name"]
+    }
+  },
+  "context": "https://schema.org",
+  "min_properties_for_quality": 5,
+  "high_quality_threshold": 10,
+  "target_tld": "ie",
+  "wdc_download_base": "https://webdatacommons.org/structureddata/2024-12/files/"
+}

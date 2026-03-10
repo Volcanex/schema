@@ -1,0 +1,46 @@
+# Core
+jupyter
+jupyterlab
+python-dotenv
+tqdm
+pandas
+pyarrow
+numpy
+
+# Common Crawl / Data pipeline
+requests
+warcio
+beautifulsoup4
+lxml
+duckdb
+
+# Screenshots
+playwright
+
+# Schema validation
+jsonschema
+rdflib
+
+# ML / Fine-tuning (install on GPU pod only — uncomment on RunPod)
+# torch>=2.1.0
+# torchvision
+# transformers>=4.45.0
+# peft>=0.12.0
+# trl>=0.11.0
+# bitsandbytes>=0.43.0
+# accelerate>=0.34.0
+# datasets>=3.0.0
+# qwen-vl-utils
+# vllm>=0.6.0
+
+# Synthetic data generation
+anthropic>=0.34.0
+# openai>=1.0.0
+
+# RunPod
+runpod
+
+# Analysis / visualisation
+matplotlib
+seaborn
+plotly

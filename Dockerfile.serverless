@@ -1,0 +1,51 @@
+# RunPod Serverless handler image for schema-model inference.
+#
+# Build and push:
+#   docker build -f Dockerfile.serverless -t your-dockerhub/schema-model:latest .
+#   docker push your-dockerhub/schema-model:latest
+#
+# Then in RunPod → Serverless → New Endpoint:
+#   Container image: your-dockerhub/schema-model:latest
+#   GPU: NVIDIA L40S
+#   Workers min: 0 (scale to zero)
+#   Workers max: 4
+#   Container disk: 50 GB
+#   Env var MODEL_PATH: /runpod-volume/schema-qwen-7b-lora/final
+#
+# Model weights live on a RunPod Network Volume (persistent storage), not baked
+# into the image. This keeps the image small and lets you update weights without
+# rebuilding. Mount the volume at /runpod-volume in the endpoint settings.
+#
+# Network Volume setup (one-time):
+#   RunPod → Storage → New Network Volume → 100 GB → us-east-1
+#   Upload model weights via the training pod (notebook 07 saves to /workspace/models/)
+
+FROM runpod/pytorch:2.1.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+
+WORKDIR /app
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir \
+    transformers>=4.45.0 \
+    peft>=0.12.0 \
+    vllm>=0.6.0 \
+    accelerate>=0.34.0 \
+    qwen-vl-utils \
+    runpod \
+    python-dotenv \
+    && rm -rf /root/.cache/pip
+
+# Copy handler and src
+COPY scripts/deploy_serverless.py ./handler.py
+COPY src/ ./src/
+COPY configs/ ./configs/
+
+# Environment defaults (override via RunPod endpoint env vars)
+ENV MODEL_PATH=/runpod-volume/schema-qwen-7b-lora/final
+ENV MAX_MODEL_LEN=4096
+ENV GPU_MEM_UTIL=0.85
+ENV MAX_TOKENS=1024
+ENV TEMPERATURE=0.1
+
+CMD ["python", "-u", "handler.py"]

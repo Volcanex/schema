@@ -1,0 +1,55 @@
+model:
+  name: Qwen/Qwen2.5-VL-7B-Instruct
+  quantization: 4bit          # bitsandbytes NF4
+  trust_remote_code: true
+
+lora:
+  r: 64                       # LoRA rank
+  alpha: 128                  # LoRA alpha (2x rank is standard)
+  dropout: 0.05
+  bias: none
+  task_type: CAUSAL_LM
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+training:
+  output_dir: ./models/schema-qwen-7b-lora
+  epochs: 3
+  per_device_train_batch_size: 4
+  gradient_accumulation_steps: 4   # Effective batch size = 16
+  learning_rate: 2.0e-4
+  lr_scheduler_type: cosine
+  warmup_ratio: 0.05
+  max_seq_length: 4096
+  bf16: true
+  fp16: false
+  gradient_checkpointing: true
+  dataloader_num_workers: 4
+  logging_steps: 10
+  save_steps: 100
+  eval_steps: 100
+  save_total_limit: 3
+  load_best_model_at_end: true
+  metric_for_best_model: eval_loss
+  report_to: none             # Set to "wandb" if tracking experiments
+
+data:
+  train_path: ./data/processed/train.jsonl
+  eval_path: ./data/processed/eval.jsonl
+  train_split: 0.9
+  eval_split: 0.1
+  max_image_size: 1280        # Max dimension for screenshot resize
+  image_format: png
+
+system_prompt: >
+  You are a schema.org JSON-LD expert. Given a screenshot and HTML of a web page,
+  generate the optimal schema.org JSON-LD markup. Output ONLY valid JSON-LD with
+  no markdown formatting, no explanation, and no code fences.
+  Use the most specific @type available. Include all extractable properties.
+  Always include "@context": "https://schema.org".

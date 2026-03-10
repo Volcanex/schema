@@ -1,0 +1,8 @@
+data/
+models/
+.env
+.git/
+notebooks/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
