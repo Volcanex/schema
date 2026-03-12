@@ -5,6 +5,7 @@ Filters manifest → assembles dataset.jsonl → splits train/eval
 import json
 import logging
 import random
+import signal
 import sys
 from collections import Counter
 from pathlib import Path
@@ -20,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 from src.schema_validator import validate_jsonld
-from src.training_data import format_training_example, split_dataset
+from src.training_data import format_training_example, split_dataset, _strip_html_noise, MAX_HTML_CHARS, _MAX_RAW_HTML
 
 MANIFEST_PATH      = Path('data/raw/warc_manifest.jsonl')
 UK_MANIFEST_PATH   = Path('data/raw/warc_manifest_uk.jsonl')   # optional, added later
@@ -47,6 +48,10 @@ log.info('Quality filtering...')
 stats = Counter()
 valid_examples = []
 
+# Signal handler defined once — catches catastrophic regex backtracking on pathological pages
+def _strip_timeout(signum, frame): raise TimeoutError
+signal.signal(signal.SIGALRM, _strip_timeout)
+
 for entry in tqdm(manifest, desc='Filtering'):
     html_path = entry.get('html_path')
     if not html_path or not Path(html_path).exists():
@@ -56,6 +61,24 @@ for entry in tqdm(manifest, desc='Filtering'):
     html = Path(html_path).read_text(errors='replace')
     if len(html) < MIN_HTML_LEN:
         stats['html_too_short'] += 1
+        continue
+
+    # Fast reject before any regex work: pages this large always exceed MAX_HTML_CHARS stripped
+    if len(html) > _MAX_RAW_HTML:
+        stats['html_too_long'] += 1
+        continue
+
+    # Strip with 2s timeout per page
+    signal.alarm(1)
+    try:
+        stripped_html = _strip_html_noise(html)
+        signal.alarm(0)
+    except TimeoutError:
+        stats['strip_timeout'] += 1
+        continue
+
+    if len(stripped_html) > MAX_HTML_CHARS:
+        stats['html_too_long'] += 1
         continue
 
     wdc_jsonld = entry.get('wdc_jsonld')

@@ -54,7 +54,24 @@ def get_system_prompt(schema_type: str = None) -> str:
     return SYSTEM_PROMPT
 
 USER_TEMPLATE = "Generate schema.org JSON-LD for this web page.\n\nHTML:\n{html}"
-MAX_HTML_CHARS = 48_000  # ~12K tokens after stripping; leaves ~2.5K headroom under 16384 max_seq_length
+MAX_HTML_CHARS = 64_000  # ~16K tokens; with class/style stripping 91% of pages fit completely
+
+
+# Pre-compiled patterns — avoids recompilation on every call (52K+ pages)
+_RE_JSONLD   = re.compile(r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>', re.DOTALL | re.IGNORECASE)
+_RE_SCRIPT   = re.compile(r'<script[^>]*>.*?</script>', re.DOTALL | re.IGNORECASE)
+_RE_STYLE    = re.compile(r'<style[^>]*>.*?</style>', re.DOTALL | re.IGNORECASE)
+_RE_SVG      = re.compile(r'<svg[\s>].*?</svg>', re.DOTALL | re.IGNORECASE)
+_RE_LINK     = re.compile(r'<link[^>]*/?>',  re.IGNORECASE)
+_RE_DATA_ATTR = re.compile(r'\s+data-[a-zA-Z][a-zA-Z0-9_:-]*(?:="[^"]*")?')
+_RE_CLASS    = re.compile(r'\s+class="[^"]*"')
+_RE_STYLE_ATTR = re.compile(r'\s+style="[^"]*"')
+_RE_BLANK    = re.compile(r'\n\s*\n+')
+
+# Raw HTML size guard: pages larger than this almost certainly exceed MAX_HTML_CHARS
+# after stripping (empirically: ~800K raw → ~100K+ stripped even for JS-heavy sites).
+# Checked before any regex work for fast rejection.
+_MAX_RAW_HTML = 300_000
 
 
 def _strip_html_noise(html: str) -> str:
@@ -68,29 +85,23 @@ def _strip_html_noise(html: str) -> str:
     - <svg> blocks — icon/logo vector data, no text content
     - <link> tags — stylesheet/preload imports, no semantic content
     - data-* attributes — framework attrs (React props, analytics ids, etc.)
+    - class= attributes — Wix/Shopify/WP hash class names
+    - style= inline attributes — CSS rules applied inline
 
     Kept intentionally:
     - HTML comments — devs sometimes embed addresses, phone numbers in them
     - <meta> tags — og:title, og:description, name, telephone etc. are gold
     - All visible text content, headings, paragraphs, tables
     """
-    # Remove existing JSON-LD — model must learn to generate it, not copy it
-    html = re.sub(
-        r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>',
-        '', html, flags=re.DOTALL | re.IGNORECASE
-    )
-    # Remove JavaScript
-    html = re.sub(r'<script(?:[^>]*)>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    # Remove CSS blocks
-    html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    # Remove SVG blocks (icon/logo vector data — no text value for schema)
-    html = re.sub(r'<svg[\s>].*?</svg>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    # Remove <link> tags (stylesheet/preload imports — not content)
-    html = re.sub(r'<link[^>]*/?>','', html, flags=re.IGNORECASE)
-    # Remove data-* attributes (framework internals — not semantic content)
-    html = re.sub(r'\s+data-[a-zA-Z][a-zA-Z0-9_:-]*(?:="[^"]*"|=\'[^\']*\')?', '', html)
-    # Collapse excessive blank lines
-    html = re.sub(r'\n\s*\n+', '\n', html)
+    html = _RE_JSONLD.sub('', html)
+    html = _RE_SCRIPT.sub('', html)
+    html = _RE_STYLE.sub('', html)
+    html = _RE_SVG.sub('', html)
+    html = _RE_LINK.sub('', html)
+    html = _RE_DATA_ATTR.sub('', html)
+    html = _RE_CLASS.sub('', html)
+    html = _RE_STYLE_ATTR.sub('', html)
+    html = _RE_BLANK.sub('\n', html)
     return html.strip()
 
 

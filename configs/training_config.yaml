@@ -26,7 +26,7 @@ training:
   learning_rate: 2.0e-4
   lr_scheduler_type: cosine
   warmup_ratio: 0.05
-  max_seq_length: 16384             # Qwen2.5-VL supports 32K; 16K covers image(~1K) + HTML(~8K) + output safely
+  max_seq_length: 20480             # 64K HTML chars (~16K tokens) + image (~1.3K) + output (~600) = ~18K; 20K gives safe margin
   bf16: true
   fp16: false
   gradient_checkpointing: true
