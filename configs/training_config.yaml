@@ -21,12 +21,12 @@ lora:
 training:
   output_dir: ./models/schema-qwen-7b-lora
   epochs: 3
-  per_device_train_batch_size: 2    # Reduced from 4 — large multimodal inputs need headroom
-  gradient_accumulation_steps: 8   # Keeps effective batch size = 16
+  per_device_train_batch_size: 1    # 1 per device — 20K token sequences fill VRAM; accumulation keeps effective batch=16
+  gradient_accumulation_steps: 16  # Effective batch size = 16
   learning_rate: 2.0e-4
   lr_scheduler_type: cosine
   warmup_ratio: 0.05
-  max_seq_length: 20480             # 64K HTML chars (~16K tokens) + image (~1.3K) + output (~600) = ~18K; 20K gives safe margin
+  max_seq_length: 16384             # Covers ~95% of examples; image(1.3K)+HTML(14K)+output(600) fits comfortably
   bf16: true
   fp16: false
   gradient_checkpointing: true
