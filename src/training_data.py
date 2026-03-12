@@ -6,6 +6,7 @@ Produces instruction-tuned conversation format with multimodal inputs.
 import json
 import logging
 import random
+import re
 from pathlib import Path
 from typing import Optional, Union
 
@@ -21,8 +22,64 @@ SYSTEM_PROMPT = (
     'Always include "@context": "https://schema.org".'
 )
 
+# Per-type schema.org property hints injected at inference time.
+# Keeps the model from hallucinating property names and reminds it of
+# type-specific fields (especially useful for Irish SME patterns).
+SCHEMA_TYPE_HINTS = {
+    "LocalBusiness": (
+        "Relevant LocalBusiness properties: name, url, telephone, email, address "
+        "(streetAddress, addressLocality, addressRegion, postalCode, addressCountry), "
+        "openingHoursSpecification, openingHours, priceRange, description, image, logo, "
+        "geo (latitude, longitude), sameAs, currenciesAccepted, paymentAccepted. "
+        "For Irish businesses: addressCountry='IE', postalCode is an Eircode (e.g. D01 AB23)."
+    ),
+    "Product": (
+        "Relevant Product properties: name, description, image, brand, sku, gtin, mpn, "
+        "offers (price, priceCurrency, availability, url), aggregateRating (ratingValue, reviewCount)."
+    ),
+    "Restaurant": (
+        "Relevant Restaurant properties: name, url, telephone, address, servesCuisine, "
+        "priceRange, openingHours, menu, hasMap, acceptsReservations, image."
+    ),
+    "Hotel": (
+        "Relevant Hotel properties: name, url, telephone, address, starRating, "
+        "amenityFeature, priceRange, image, checkinTime, checkoutTime."
+    ),
+}
+
+def get_system_prompt(schema_type: str = None) -> str:
+    """Return system prompt, optionally enriched with type-specific property hints."""
+    if schema_type and schema_type in SCHEMA_TYPE_HINTS:
+        return SYSTEM_PROMPT + "\n\n" + SCHEMA_TYPE_HINTS[schema_type]
+    return SYSTEM_PROMPT
+
 USER_TEMPLATE = "Generate schema.org JSON-LD for this web page.\n\nHTML:\n{html}"
-MAX_HTML_CHARS = 8_000  # Truncate HTML to keep within context window
+MAX_HTML_CHARS = 32_000  # ~8K tokens after image; strip noise first so this covers full page
+
+
+def _strip_html_noise(html: str) -> str:
+    """
+    Strip only content we are certain is noise for schema generation:
+    - <style> blocks (pure CSS, no business info)
+    - JavaScript <script> blocks
+    - Existing <script type="application/ld+json"> stripped from INPUT so the model
+      must generate schema from page content, not copy the existing markup.
+
+    HTML comments are intentionally KEPT — devs sometimes embed addresses,
+    phone numbers, or structured data hints in them.
+    """
+    # Remove existing JSON-LD from input — model must learn to generate it, not copy it
+    html = re.sub(
+        r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>',
+        '', html, flags=re.DOTALL | re.IGNORECASE
+    )
+    # Remove other <script> blocks (JavaScript — no business info)
+    html = re.sub(r'<script(?:[^>]*)>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    # Remove <style> blocks (CSS only)
+    html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    # Collapse excessive blank lines
+    html = re.sub(r'\n\s*\n+', '\n', html)
+    return html.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -50,8 +107,9 @@ def format_training_example(
     else:
         jsonld_str = jsonld
 
-    truncated_html = html[:MAX_HTML_CHARS]
-    if len(html) > MAX_HTML_CHARS:
+    clean_html = _strip_html_noise(html)
+    truncated_html = clean_html[:MAX_HTML_CHARS]
+    if len(clean_html) > MAX_HTML_CHARS:
         truncated_html += "\n<!-- [HTML truncated] -->"
 
     # Build user content: image (if available) + text

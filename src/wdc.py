@@ -136,7 +136,7 @@ def download_wdc_for_tld(
         lookup_path.write_bytes(resp.content)
 
     # Parse lookup CSV to find relevant chunks
-    # Format: pld,chunk_id  (e.g. "example.ie,42")
+    # Format: pld,tld,part_name  (e.g. "example.ie,ie,part_42.gz")
     tld_suffix = f".{tld.lstrip('.')}"
     relevant_chunks = set()
     with open(lookup_path, encoding="utf-8", errors="replace") as f:
@@ -145,14 +145,13 @@ def download_wdc_for_tld(
             if not line or line.startswith("pld"):
                 continue
             parts = line.split(",")
-            if len(parts) >= 2:
+            if len(parts) >= 3:
                 pld = parts[0].strip()
-                chunk = parts[1].strip()
+                part_name = parts[2].strip()  # e.g. "part_42.gz"
                 if pld.endswith(tld_suffix) or pld == tld.lstrip("."):
-                    try:
-                        relevant_chunks.add(int(chunk))
-                    except ValueError:
-                        pass
+                    m = re.match(r"part_(\d+)\.gz", part_name)
+                    if m:
+                        relevant_chunks.add(int(m.group(1)))
 
     logger.info(f"Found {len(relevant_chunks)} chunks containing .{tld} domains for {schema_type}")
 

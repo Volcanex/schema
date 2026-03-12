@@ -1,6 +1,6 @@
 model:
-  name: Qwen/Qwen2.5-VL-7B-Instruct
-  quantization: 4bit          # bitsandbytes NF4
+  name: Qwen/Qwen3-VL-8B-Instruct   # Upgraded from Qwen2.5-VL-7B — OCRBench +40pts, MMMU +12pts, 256K context
+  quantization: 4bit                 # bitsandbytes NF4
   trust_remote_code: true
 
 lora:
@@ -21,12 +21,12 @@ lora:
 training:
   output_dir: ./models/schema-qwen-7b-lora
   epochs: 3
-  per_device_train_batch_size: 4
-  gradient_accumulation_steps: 4   # Effective batch size = 16
+  per_device_train_batch_size: 2    # Reduced from 4 — large multimodal inputs need headroom
+  gradient_accumulation_steps: 8   # Keeps effective batch size = 16
   learning_rate: 2.0e-4
   lr_scheduler_type: cosine
   warmup_ratio: 0.05
-  max_seq_length: 4096
+  max_seq_length: 16384             # Qwen2.5-VL supports 32K; 16K covers image(~1K) + HTML(~8K) + output safely
   bf16: true
   fp16: false
   gradient_checkpointing: true
