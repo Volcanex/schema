@@ -54,7 +54,7 @@ def get_system_prompt(schema_type: str = None) -> str:
     return SYSTEM_PROMPT
 
 USER_TEMPLATE = "Generate schema.org JSON-LD for this web page.\n\nHTML:\n{html}"
-MAX_HTML_CHARS = 32_000  # ~8K tokens after image; strip noise first so this covers full page
+MAX_HTML_CHARS = 48_000  # ~12K tokens after stripping; leaves ~2.5K headroom under 16384 max_seq_length
 
 
 def _strip_html_noise(html: str) -> str:
