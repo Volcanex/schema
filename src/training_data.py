@@ -59,24 +59,36 @@ MAX_HTML_CHARS = 48_000  # ~12K tokens after stripping; leaves ~2.5K headroom un
 
 def _strip_html_noise(html: str) -> str:
     """
-    Strip only content we are certain is noise for schema generation:
-    - <style> blocks (pure CSS, no business info)
-    - JavaScript <script> blocks
-    - Existing <script type="application/ld+json"> stripped from INPUT so the model
-      must generate schema from page content, not copy the existing markup.
+    Strip content we are certain is noise for schema generation.
 
-    HTML comments are intentionally KEPT — devs sometimes embed addresses,
-    phone numbers, or structured data hints in them.
+    Removed (zero schema value):
+    - <style> blocks (pure CSS)
+    - JavaScript <script> blocks
+    - Existing <script type="application/ld+json"> — model must generate, not copy
+    - <svg> blocks — icon/logo vector data, no text content
+    - <link> tags — stylesheet/preload imports, no semantic content
+    - data-* attributes — framework attrs (React props, analytics ids, etc.)
+
+    Kept intentionally:
+    - HTML comments — devs sometimes embed addresses, phone numbers in them
+    - <meta> tags — og:title, og:description, name, telephone etc. are gold
+    - All visible text content, headings, paragraphs, tables
     """
-    # Remove existing JSON-LD from input — model must learn to generate it, not copy it
+    # Remove existing JSON-LD — model must learn to generate it, not copy it
     html = re.sub(
         r'<script[^>]*type=["\']application/ld\+json["\'][^>]*>.*?</script>',
         '', html, flags=re.DOTALL | re.IGNORECASE
     )
-    # Remove other <script> blocks (JavaScript — no business info)
+    # Remove JavaScript
     html = re.sub(r'<script(?:[^>]*)>.*?</script>', '', html, flags=re.DOTALL | re.IGNORECASE)
-    # Remove <style> blocks (CSS only)
+    # Remove CSS blocks
     html = re.sub(r'<style[^>]*>.*?</style>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    # Remove SVG blocks (icon/logo vector data — no text value for schema)
+    html = re.sub(r'<svg[\s>].*?</svg>', '', html, flags=re.DOTALL | re.IGNORECASE)
+    # Remove <link> tags (stylesheet/preload imports — not content)
+    html = re.sub(r'<link[^>]*/?>','', html, flags=re.IGNORECASE)
+    # Remove data-* attributes (framework internals — not semantic content)
+    html = re.sub(r'\s+data-[a-zA-Z][a-zA-Z0-9_:-]*(?:="[^"]*"|=\'[^\']*\')?', '', html)
     # Collapse excessive blank lines
     html = re.sub(r'\n\s*\n+', '\n', html)
     return html.strip()
