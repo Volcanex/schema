@@ -20,8 +20,9 @@ pip install \
   "accelerate>=0.34.0" \
   "datasets>=3.0.0" \
   qwen-vl-utils \
-  flash-attn --no-build-isolation \
   -q
+# Note: flash-attn intentionally excluded — takes 1h+ to compile and hangs SSH.
+# Notebook falls back to eager attention + MAX_SEQ=12288 clip (OOM-safe on A100).
 
 # 3. vLLM (for inference validation on pod)
 pip install "vllm>=0.6.0" -q
