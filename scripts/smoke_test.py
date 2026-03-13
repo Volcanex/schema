@@ -58,7 +58,22 @@ assert total_vram >= 75, f'Need ≥75 GB VRAM, got {total_vram:.0f} GB'
 # ── Check cache files exist ────────────────────────────────────────────────
 pt_files = sorted(CACHE_DIR.glob('train_*.pt'))
 assert len(pt_files) >= 5, f'Need ≥5 cached .pt files in {CACHE_DIR}, found {len(pt_files)}'
-print(f'Cache: {len(pt_files)} train .pt files ✓')
+print(f'Cache: {len(pt_files)} train .pt files total')
+
+# Pick 5 valid examples: len ≤ MAX_SEQ, has real labels (not all masked or all unmasked)
+MAX_SEQ = 12288
+valid_files = []
+for f in pt_files:
+    ex = torch.load(f, map_location='cpu', weights_only=True)
+    n = ex['input_ids'].shape[0]
+    n_labels = (ex['labels'] != -100).sum().item()
+    if n <= MAX_SEQ and 0 < n_labels < n:
+        valid_files.append(f)
+    if len(valid_files) >= 5:
+        break
+assert len(valid_files) >= 5, f'Could not find 5 valid examples ≤ {MAX_SEQ} tokens with proper labels'
+pt_files = valid_files
+print(f'Using {len(pt_files)} valid smoke-test examples ✓')
 
 # ── Load model ─────────────────────────────────────────────────────────────
 print(f'\nLoading {MODEL_ID}...')
@@ -70,7 +85,8 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
     attn_implementation='sdpa', device_map='auto', token=HF_TOKEN, cache_dir=str(MODELS_DIR))
 processor = AutoProcessor.from_pretrained(MODEL_ID, token=HF_TOKEN, cache_dir=str(MODELS_DIR),
                                            min_pixels=256*28*28, max_pixels=640*28*28)
-model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=False)
+model = prepare_model_for_kbit_training(model)
+model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
 lora_cfg = config['lora']
 model = get_peft_model(model, LoraConfig(r=lora_cfg['r'], lora_alpha=lora_cfg['alpha'],
     lora_dropout=lora_cfg['dropout'], bias=lora_cfg['bias'],
