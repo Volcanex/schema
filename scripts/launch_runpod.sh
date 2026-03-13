@@ -15,7 +15,12 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$PROJECT_ROOT/.env"
 
 if [ -f "$ENV_FILE" ]; then
-  export $(grep -v '^#' "$ENV_FILE" | grep -v '^$' | xargs)
+  while IFS='=' read -r key value; do
+    [[ "$key" =~ ^#.*$ || -z "$key" ]] && continue
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | sed 's/[[:space:]]*#.*//' | xargs)
+    export "$key=$value"
+  done < "$ENV_FILE"
   echo "Loaded .env"
 fi
 
