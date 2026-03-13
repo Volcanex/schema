@@ -10,7 +10,16 @@ Loads model, runs 3 gradient steps on 5 cached .pt examples, checks:
 Usage:
     python scripts/smoke_test.py
 """
-import os, sys, json, time, torch
+import os, sys, json, time
+import torch
+
+# Shim: set_submodule missing on some PyTorch builds, needed by bitsandbytes quantizer.
+if not hasattr(torch.nn.Module, "set_submodule"):
+    def _set_submodule(self, target, module):
+        parent, _, last = target.rpartition(".")
+        parent_mod = self.get_submodule(parent) if parent else self
+        setattr(parent_mod, last, module)
+    torch.nn.Module.set_submodule = _set_submodule
 from pathlib import Path
 
 # ── Must be first, before any CUDA init ────────────────────────────────────
