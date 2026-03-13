@@ -70,7 +70,7 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
     attn_implementation='sdpa', device_map='auto', token=HF_TOKEN, cache_dir=str(MODELS_DIR))
 processor = AutoProcessor.from_pretrained(MODEL_ID, token=HF_TOKEN, cache_dir=str(MODELS_DIR),
                                            min_pixels=256*28*28, max_pixels=640*28*28)
-model = prepare_model_for_kbit_training(model)
+model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=False)
 lora_cfg = config['lora']
 model = get_peft_model(model, LoraConfig(r=lora_cfg['r'], lora_alpha=lora_cfg['alpha'],
     lora_dropout=lora_cfg['dropout'], bias=lora_cfg['bias'],
@@ -122,6 +122,7 @@ for step, batch in enumerate(loader):
     outputs = model(**batch)
     loss = outputs.loss
     loss.backward()
+    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
     optimizer.step(); optimizer.zero_grad()
     vram = torch.cuda.memory_allocated() / 1e9
     print(f'  Step {step+1}: loss={loss.item():.4f}  VRAM={vram:.1f} GB')
