@@ -32,9 +32,9 @@ training:
   gradient_checkpointing: true
   dataloader_num_workers: 4
   logging_steps: 5
-  save_steps: 20
+  save_steps: 5
   eval_steps: 20
-  save_total_limit: 3
+  save_total_limit: 5
   load_best_model_at_end: false  # true requires eval to have run before training ends — unsafe
   metric_for_best_model: eval_loss
   report_to: none             # Set to "wandb" if tracking experiments
