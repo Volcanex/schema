@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 Inference Cost Analysis — Baseline Schema Model</title>
+<style>
+  :root {
+    --bg:      #0f1117;
+    --card:    #1a1d27;
+    --border:  #2e3147;
+    --text:    #e2e8f0;
+    --muted:   #8892a4;
+    --green:   #27ae60;
+    --yellow:  #f39c12;
+    --red:     #e74c3c;
+    --blue:    #2980b9;
+    --purple:  #8e44ad;
+    --accent:  #3b82f6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 32px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.9em; font-weight: 700; margin-bottom: 4px; }
+  h2 { font-size: 1.25em; font-weight: 600; margin: 36px 0 14px; color: var(--accent); border-left: 3px solid var(--accent); padding-left: 12px; }
+  h3 { font-size: 1em; font-weight: 600; margin: 16px 0 8px; color: var(--text); }
+  .subtitle { color: var(--muted); font-size: 0.95em; margin-bottom: 28px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+  thead tr { background: #12151f; }
+  th { padding: 10px 12px; text-align: left; color: var(--muted); font-weight: 600; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+  td { padding: 9px 12px; border-bottom: 1px solid #1e2233; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #1e2233; }
+  .tag {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 20px;
+    font-size: 0.78em;
+    font-weight: 600;
+  }
+  .tag-green  { background: #1a3a2a; color: #4ade80; border: 1px solid #27ae60; }
+  .tag-yellow { background: #3a2e10; color: #fbbf24; border: 1px solid #f39c12; }
+  .tag-red    { background: #3a1a1a; color: #f87171; border: 1px solid #e74c3c; }
+  .tag-blue   { background: #1a2a3a; color: #60a5fa; border: 1px solid #2980b9; }
+  .tag-purple { background: #2a1a3a; color: #c084fc; border: 1px solid #8e44ad; }
+  .stat { text-align: center; padding: 8px; }
+  .stat-value { font-size: 2em; font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .stat-label { font-size: 0.78em; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .bar-wrap { background: #12151f; border-radius: 6px; height: 10px; margin: 6px 0 2px; overflow: hidden; }
+  .bar { height: 100%; border-radius: 6px; transition: width 0.3s; }
+  .note { background: #1a1d27; border: 1px solid #2e3147; border-left: 3px solid var(--yellow); border-radius: 6px; padding: 10px 14px; font-size: 0.88em; color: var(--muted); margin: 12px 0; }
+  .note strong { color: var(--text); }
+  .rec { background: #0d1a2a; border: 1px solid #1e3a5f; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .rec-title { font-weight: 600; color: var(--accent); margin-bottom: 4px; }
+  code { background: #12151f; border: 1px solid var(--border); border-radius: 4px; padding: 1px 6px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.88em; color: #a5f3fc; }
+  .section-intro { color: var(--muted); font-size: 0.92em; margin-bottom: 14px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+</style>
+</head>
+<body>
+
+<h1>💰 Inference Cost Analysis</h1>
+<p class="subtitle">
+  Baseline Schema Model &nbsp;·&nbsp; Qwen3-VL-8B-Instruct + QLoRA Adapter &nbsp;·&nbsp; 4-bit NF4 Quantization<br>
+  Generated March 2026 &nbsp;·&nbsp; Observed peak VRAM: <strong>16.6 GB</strong> &nbsp;·&nbsp; Avg inference time: <strong>~28s/website</strong> (RTX A5000)
+</p>
+
+<!-- ── Key stats ───────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="grid3">
+    <div class="stat">
+      <div class="stat-value">0.12¢</div>
+      <div class="stat-label">Cheapest cost per website<br><span style="color:#4ade80">RTX A5000 community</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">$1.24</div>
+      <div class="stat-label">Cost per 1,000 websites<br><span style="color:#4ade80">cheapest cloud option</span></div>
+    </div>
+    <div class="stat">
+      <div class="stat-value">10–15×</div>
+      <div class="stat-label">Cheaper than GPT-4o<br><span style="color:#60a5fa">~$0.015 per GPT-4o call</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Model profile ───────────────────────────────────────────────────── -->
+<h2>Model Profile</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>Memory footprint (4-bit NF4)</h3>
+    <table>
+      <tr><td>Base weights (8B × 4-bit)</td><td><strong>~4.5 GB</strong></td></tr>
+      <tr><td>Vision encoder</td><td><strong>~3 GB</strong></td></tr>
+      <tr><td>KV cache + activations</td><td><strong>~6–9 GB</strong></td></tr>
+      <tr><td>LoRA adapter</td><td><strong>~0.7 GB</strong></td></tr>
+      <tr><td style="color:#4ade80;font-weight:600">Peak VRAM (observed)</td><td style="color:#4ade80;font-weight:600">~16.6 GB</td></tr>
+    </table>
+    <div class="note" style="margin-top:12px">
+      <strong>Reduce VRAM to ~12–13 GB</strong> by lowering <code>max_pixels</code> from
+      <code>640×28×28</code> → <code>320×28×28</code>. Slight quality drop on image-heavy pages.
+    </div>
+  </div>
+  <div class="card">
+    <h3>Quantization comparison</h3>
+    <table>
+      <tr>
+        <th>Quant</th><th>VRAM</th><th>Speed</th><th>Quality</th>
+      </tr>
+      <tr>
+        <td>FP16 (no quant)</td>
+        <td>~32 GB</td>
+        <td><span class="tag tag-green">Fastest</span></td>
+        <td><span class="tag tag-green">Best</span></td>
+      </tr>
+      <tr>
+        <td><strong>4-bit NF4 ← we use</strong></td>
+        <td><strong>~16.6 GB</strong></td>
+        <td><span class="tag tag-green">Fast</span></td>
+        <td><span class="tag tag-green">~97% of FP16</span></td>
+      </tr>
+      <tr>
+        <td>4-bit GPTQ</td>
+        <td>~15 GB</td>
+        <td><span class="tag tag-green">Fast</span></td>
+        <td><span class="tag tag-yellow">~95% of FP16</span></td>
+      </tr>
+      <tr>
+        <td>2-bit (extreme)</td>
+        <td>~9 GB</td>
+        <td><span class="tag tag-yellow">Moderate</span></td>
+        <td><span class="tag tag-red">Notable drop</span></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ── RunPod cloud ────────────────────────────────────────────────────── -->
+<h2>☁️ RunPod Cloud Inference</h2>
+<p class="section-intro">Spin up on demand, pay only while running. Ideal for batch jobs and variable workloads. No upfront cost.</p>
+
+<div class="card" style="padding:0;overflow:hidden">
+<table>
+  <thead>
+    <tr>
+      <th>GPU</th>
+      <th>VRAM</th>
+      <th>Community/hr</th>
+      <th>Secure/hr</th>
+      <th>~s / website</th>
+      <th>Cost / website</th>
+      <th>Cost / 1k websites</th>
+      <th>Cost / 10k websites</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>RTX A5000</strong></td>
+      <td>24 GB</td>
+      <td style="color:#4ade80"><strong>$0.16</strong></td>
+      <td>$0.27</td>
+      <td>28s</td>
+      <td>0.12¢</td>
+      <td style="color:#4ade80"><strong>$1.24</strong></td>
+      <td>$12.40</td>
+      <td><span class="tag tag-green">✅ Recommended</span></td>
+    </tr>
+    <tr>
+      <td><strong>RTX A4500</strong></td>
+      <td>20 GB</td>
+      <td style="color:#4ade80"><strong>$0.19</strong></td>
+      <td>$0.25</td>
+      <td>32s</td>
+      <td>0.17¢</td>
+      <td>$1.69</td>
+      <td>$16.90</td>
+      <td><span class="tag tag-green">✅ Good value</span></td>
+    </tr>
+    <tr>
+      <td>RTX 3090</td>
+      <td>24 GB</td>
+      <td>$0.22</td>
+      <td>$0.46</td>
+      <td>30s</td>
+      <td>0.18¢</td>
+      <td>$1.83</td>
+      <td>$18.30</td>
+      <td><span class="tag tag-green">✅ Works</span></td>
+    </tr>
+    <tr>
+      <td>A40</td>
+      <td>48 GB</td>
+      <td>$0.35</td>
+      <td>$0.40</td>
+      <td>22s</td>
+      <td>0.21¢</td>
+      <td>$2.14</td>
+      <td>$21.40</td>
+      <td><span class="tag tag-blue">✅ Faster</span></td>
+    </tr>
+    <tr>
+      <td>L4</td>
+      <td>24 GB</td>
+      <td>$0.44</td>
+      <td>$0.39</td>
+      <td>25s</td>
+      <td>0.27¢</td>
+      <td>$3.06</td>
+      <td>$30.60</td>
+      <td><span class="tag tag-yellow">⚠ Pricey</span></td>
+    </tr>
+    <tr>
+      <td>A100 80GB</td>
+      <td>80 GB</td>
+      <td>$0.99</td>
+      <td>$1.19</td>
+      <td>12s</td>
+      <td>0.33¢</td>
+      <td>$3.30</td>
+      <td>$33.00</td>
+      <td><span class="tag tag-purple">🔮 Overkill</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <strong>Community vs Secure cloud:</strong> Community pods are cheaper but can be interrupted (rare in practice for short jobs).
+  Secure cloud is more reliable — worth it for overnight batch runs. Community is fine for dev/testing.
+</div>
+
+<!-- cost at scale bars -->
+<div class="card">
+  <h3>Cost at scale (community cloud, RTX A5000 @ $0.16/hr)</h3>
+  <div style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;font-size:0.85em;margin-bottom:4px"><span>100 websites / day</span><span style="color:#4ade80"><strong>$0.12 / day</strong></span></div>
+    <div class="bar-wrap"><div class="bar" style="width:1%;background:#27ae60"></div></div>
+
+    <div style="display:flex;justify-content:space-between;font-size:0.85em;margin:8px 0 4px"><span>1,000 websites / day</span><span style="color:#4ade80"><strong>$1.24 / day</strong></span></div>
+    <div class="bar-wrap"><div class="bar" style="width:10%;background:#27ae60"></div></div>
+
+    <div style="display:flex;justify-content:space-between;font-size:0.85em;margin:8px 0 4px"><span>10,000 websites / day</span><span style="color:#2980b9"><strong>$12.40 / day</strong></span></div>
+    <div class="bar-wrap"><div class="bar" style="width:40%;background:#2980b9"></div></div>
+
+    <div style="display:flex;justify-content:space-between;font-size:0.85em;margin:8px 0 4px"><span>100,000 websites / day</span><span style="color:#f39c12"><strong>$124 / day</strong></span></div>
+    <div class="bar-wrap"><div class="bar" style="width:100%;background:#f39c12"></div></div>
+  </div>
+  <p style="font-size:0.8em;color:var(--muted);margin-top:10px">
+    At 100k/day you'd want batching + multiple pods. Still far cheaper than any API alternative.
+  </p>
+</div>
+
+<!-- ── Home hardware ───────────────────────────────────────────────────── -->
+<h2>🖥️ Home Hardware</h2>
+<p class="section-intro">
+  Our model peaks at <strong>16.6 GB VRAM</strong>. Most consumer GPUs with &lt;24 GB need either reduced image resolution
+  or a smaller base model. Electricity is the only running cost.
+</p>
+
+<div class="card" style="padding:0;overflow:hidden">
+<table>
+  <thead>
+    <tr>
+      <th>GPU</th>
+      <th>VRAM</th>
+      <th>TDP</th>
+      <th>~s / website</th>
+      <th>8B model 4-bit</th>
+      <th>Elec. cost / 1k websites*</th>
+      <th>Street price (used)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>RTX 4090</strong></td>
+      <td>24 GB</td>
+      <td>450W</td>
+      <td>~15s</td>
+      <td><span class="tag tag-green">✅ Works great</span></td>
+      <td>~€0.53</td>
+      <td>~€1,600 new</td>
+    </tr>
+    <tr>
+      <td><strong>RTX 3090 / 3090 Ti</strong></td>
+      <td>24 GB</td>
+      <td>350W</td>
+      <td>~28s</td>
+      <td><span class="tag tag-green">✅ Works great</span></td>
+      <td>~€0.73</td>
+      <td>~€550–700 used</td>
+    </tr>
+    <tr>
+      <td>RTX 4080 Super</td>
+      <td>16 GB</td>
+      <td>320W</td>
+      <td>~38s</td>
+      <td><span class="tag tag-yellow">⚠ Tight — lower resolution needed</span></td>
+      <td>~€0.90</td>
+      <td>~€900 new</td>
+    </tr>
+    <tr>
+      <td>RTX 4070 Ti Super</td>
+      <td>16 GB</td>
+      <td>285W</td>
+      <td>~40s</td>
+      <td><span class="tag tag-yellow">⚠ Tight — lower resolution needed</span></td>
+      <td>~€0.84</td>
+      <td>~€700 new</td>
+    </tr>
+    <tr style="background:#1a1010">
+      <td><strong>RTX A2000 (12 GB)</strong></td>
+      <td>12 GB</td>
+      <td>70W</td>
+      <td>~90s+</td>
+      <td><span class="tag tag-red">❌ OOM — needs changes (see below)</span></td>
+      <td>~€0.06 (if it works)</td>
+      <td>~€300–400 used</td>
+    </tr>
+    <tr style="background:#1a1010">
+      <td>RTX 3060 / 4060 Ti</td>
+      <td>12 GB</td>
+      <td>170W</td>
+      <td>~90s+</td>
+      <td><span class="tag tag-red">❌ OOM — needs changes</span></td>
+      <td>~€0.17 (if it works)</td>
+      <td>~€250–350</td>
+    </tr>
+    <tr style="background:#0d1a0d">
+      <td>M3 Pro / M3 Max</td>
+      <td>18–128 GB unified</td>
+      <td>30–100W</td>
+      <td>~45–90s</td>
+      <td><span class="tag tag-yellow">⚠ Works via MPS (slow vs CUDA)</span></td>
+      <td>~€0.02–0.08</td>
+      <td>MacBook / Mac Studio</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p style="font-size:0.8em;color:var(--muted);margin:6px 0 16px">* Electricity at €0.30/kWh (Irish rate). 1,000 websites = ~8 hours GPU time at 28s/inference.</p>
+
+<!-- A2000 callout -->
+<div class="card" style="border-color:#7f1d1d">
+  <h3 style="color:#fca5a5">⚠️ RTX A2000 (12 GB) — Workarounds</h3>
+  <p style="color:var(--muted);font-size:0.9em;margin-bottom:12px">The 8B model peaks at 16.6 GB — won't fit in 12 GB as-is. Options:</p>
+  <table>
+    <tr>
+      <th>Option</th><th>VRAM saving</th><th>Quality impact</th><th>Effort</th>
+    </tr>
+    <tr>
+      <td>Lower <code>max_pixels</code> to <code>256×28×28</code></td>
+      <td>~2–3 GB saved</td>
+      <td><span class="tag tag-yellow">Small</span></td>
+      <td><span class="tag tag-green">1 line change</span></td>
+    </tr>
+    <tr>
+      <td>Retrain on <a href="https://huggingface.co/Qwen/Qwen2.5-VL-3B-Instruct" style="color:var(--accent)">Qwen2.5-VL-3B</a> instead</td>
+      <td>Fits in ~8 GB</td>
+      <td><span class="tag tag-yellow">Moderate</span></td>
+      <td><span class="tag tag-yellow">Re-run training (same pipeline)</span></td>
+    </tr>
+    <tr>
+      <td>2-bit GPTQ quantization</td>
+      <td>Fits in ~9 GB</td>
+      <td><span class="tag tag-red">Noticeable</span></td>
+      <td><span class="tag tag-yellow">Extra quant step</span></td>
+    </tr>
+    <tr>
+      <td>CPU offloading (<code>device_map='auto'</code>)</td>
+      <td>Unlimited</td>
+      <td><span class="tag tag-green">None</span></td>
+      <td><span class="tag tag-green">Already set</span> — but ~5 min/inference</td>
+    </tr>
+  </table>
+  <div class="note" style="margin-top:12px">
+    <strong>Easiest path for A2000:</strong> halve <code>max_pixels</code> + enable CPU offloading. Slow but free to run, and electricity at 70W is ~€0.02/hour.
+  </div>
+</div>
+
+<!-- ── vs alternatives ────────────────────────────────────────────────── -->
+<h2>⚖️ vs. API Alternatives</h2>
+<p class="section-intro">Cost per 1,000 website schema extractions:</p>
+
+<div class="card" style="padding:0;overflow:hidden">
+<table>
+  <thead>
+    <tr>
+      <th>Option</th>
+      <th>Cost / 1k websites</th>
+      <th>Latency</th>
+      <th>Privacy</th>
+      <th>Schema accuracy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr style="background:#0d1a0d">
+      <td><strong>✅ This model (A5000 community)</strong></td>
+      <td style="color:#4ade80"><strong>$1.24</strong></td>
+      <td>28s / website</td>
+      <td><span class="tag tag-green">✅ On-prem</span></td>
+      <td><span class="tag tag-green">~90% valid, schema-trained</span></td>
+    </tr>
+    <tr>
+      <td>GPT-4o (with vision)</td>
+      <td style="color:#f87171"><strong>~$15–20</strong></td>
+      <td>3–8s / website</td>
+      <td><span class="tag tag-red">❌ Data leaves org</span></td>
+      <td><span class="tag tag-yellow">Good but generic</span></td>
+    </tr>
+    <tr>
+      <td>Claude 3.5 Sonnet (with vision)</td>
+      <td style="color:#f87171"><strong>~$15–25</strong></td>
+      <td>3–8s / website</td>
+      <td><span class="tag tag-red">❌ Data leaves org</span></td>
+      <td><span class="tag tag-yellow">Good but generic</span></td>
+    </tr>
+    <tr>
+      <td>Gemini 1.5 Flash</td>
+      <td style="color:#fbbf24"><strong>~$3–5</strong></td>
+      <td>2–5s / website</td>
+      <td><span class="tag tag-red">❌ Data leaves org</span></td>
+      <td><span class="tag tag-yellow">Reasonable</span></td>
+    </tr>
+    <tr>
+      <td>Rule-based HTML parser</td>
+      <td style="color:#4ade80"><strong>~$0.00</strong></td>
+      <td>&lt;1s</td>
+      <td><span class="tag tag-green">✅ On-prem</span></td>
+      <td><span class="tag tag-red">❌ Misses most properties</span></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ── Recommendations ────────────────────────────────────────────────── -->
+<h2>🎯 Recommendations</h2>
+
+<div class="rec">
+  <div class="rec-title">🚀 Production batch jobs (1k–100k websites)</div>
+  Use <strong>RTX A5000 community cloud</strong> on RunPod. Spin up, process, spin down.
+  At $0.16/hr and 28s/website you can process <strong>~129 websites/hour</strong>.
+  1,000 websites costs about <strong>$1.24 and takes ~8 hours</strong>. Schedule overnight.
+</div>
+
+<div class="rec">
+  <div class="rec-title">💻 Local dev &amp; testing</div>
+  Any 24 GB GPU (RTX 3090 used ~€600) runs it perfectly. Daily electricity cost for occasional
+  runs is pennies. Good for iterating on prompts, checking outputs, one-off extractions.
+</div>
+
+<div class="rec">
+  <div class="rec-title">🏠 Low-end home hardware (A2000 12 GB)</div>
+  Halve <code>max_pixels</code> in the inference script + use <code>device_map='auto'</code> to allow
+  CPU offloading. Expect <strong>~3–5 min/website</strong> but electricity is basically free (~€0.006/hour at 70W).
+  Fine for processing a few hundred websites overnight. Or retrain on <strong>Qwen2.5-VL-3B</strong>
+  (same pipeline, fits in 8 GB, faster).
+</div>
+
+<div class="rec">
+  <div class="rec-title">📈 V2 scaling strategy</div>
+  If this goes to production at serious scale (&gt;100k websites/day): self-host on a
+  bare-metal server with 2× RTX 3090 (€1,200 used). Two GPUs in parallel = 258 websites/hour
+  at essentially zero variable cost. Payback vs cloud in ~3 months at that volume.
+</div>
+
+<hr>
+<p style="font-size:0.82em;color:var(--muted);text-align:center">
+  Baseline Labs · Schema.org JSON-LD Generation · March 2026 ·
+  Inference times measured on RTX A5000, 28s avg per website ·
+  Cloud prices from RunPod (March 2026, subject to change) ·
+  Electricity at €0.30/kWh
+</p>
+
+</body>
+</html>
