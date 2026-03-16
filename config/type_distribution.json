@@ -1,0 +1,112 @@
+{
+  "description": "Target distribution of schema.org types in training data. Weights represent relative importance — the pipeline should aim to generate examples proportional to these weights. Total doesn't need to sum to 100.",
+  "target_examples": 10000,
+  "types": {
+    "LocalBusiness": {
+      "weight": 20,
+      "subtypes_to_cover": [
+        "Restaurant", "Bakery", "BarOrPub", "CafeOrCoffeeShop",
+        "Hotel", "BedAndBreakfast", "Hostel",
+        "Dentist", "Physician", "Pharmacy",
+        "AutoRepair", "AutoDealer",
+        "BeautySalon", "HairSalon", "BarberShop", "DaySpa",
+        "Plumber", "Electrician", "HVACBusiness", "RoofingContractor",
+        "AccountingService", "LegalService", "Attorney",
+        "RealEstateAgent", "InsuranceAgency", "FinancialService",
+        "ClothingStore", "ElectronicsStore", "FurnitureStore",
+        "GroceryStore", "HardwareStore", "JewelryStore",
+        "PetStore", "SportingGoodsStore",
+        "ExerciseGym", "GolfCourse",
+        "ChildCare", "DryCleaningOrLaundry",
+        "ProfessionalService"
+      ],
+      "notes": "Largest category for Irish/UK SMEs. Ensure diverse subtypes."
+    },
+    "Product": {
+      "weight": 15,
+      "subtypes_to_cover": ["Product", "IndividualProduct", "ProductGroup"],
+      "notes": "E-commerce product pages with Offer. Include varied price formats, availability states."
+    },
+    "Article": {
+      "weight": 10,
+      "subtypes_to_cover": ["Article", "BlogPosting", "NewsArticle", "TechArticle"],
+      "notes": "Blog posts, news articles. Include author, publisher, dates."
+    },
+    "Event": {
+      "weight": 8,
+      "subtypes_to_cover": ["Event", "MusicEvent", "SportsEvent", "BusinessEvent", "EducationEvent", "Festival"],
+      "notes": "Events with dates, venues, ticket prices. Include both upcoming and past events."
+    },
+    "FAQPage": {
+      "weight": 8,
+      "subtypes_to_cover": ["FAQPage"],
+      "notes": "FAQ sections common on service/product pages. Varies from 3 to 20+ questions."
+    },
+    "Recipe": {
+      "weight": 5,
+      "subtypes_to_cover": ["Recipe"],
+      "notes": "Food blogs, recipe sites. Include ingredients, steps, nutrition, times."
+    },
+    "Organization": {
+      "weight": 7,
+      "subtypes_to_cover": ["Organization", "Corporation", "EducationalOrganization", "GovernmentOrganization", "NGO"],
+      "notes": "About pages, corporate sites. Include contact, social profiles."
+    },
+    "Service": {
+      "weight": 7,
+      "subtypes_to_cover": ["Service", "FinancialProduct", "GovernmentService"],
+      "notes": "Service pages for businesses. Often combined with LocalBusiness."
+    },
+    "Person": {
+      "weight": 3,
+      "subtypes_to_cover": ["Person"],
+      "notes": "About/team pages, professional profiles."
+    },
+    "WebSite": {
+      "weight": 3,
+      "subtypes_to_cover": ["WebSite"],
+      "notes": "Homepage markup with SearchAction. Usually combined with other types."
+    },
+    "BreadcrumbList": {
+      "weight": 4,
+      "subtypes_to_cover": ["BreadcrumbList"],
+      "notes": "Navigation breadcrumbs. Usually generated alongside primary type."
+    },
+    "JobPosting": {
+      "weight": 3,
+      "subtypes_to_cover": ["JobPosting"],
+      "notes": "Job listings with salary, location, requirements."
+    },
+    "Course": {
+      "weight": 2,
+      "subtypes_to_cover": ["Course"],
+      "notes": "Training/education courses."
+    },
+    "SoftwareApplication": {
+      "weight": 2,
+      "subtypes_to_cover": ["SoftwareApplication", "MobileApplication", "WebApplication"],
+      "notes": "App/software product pages."
+    },
+    "HowTo": {
+      "weight": 3,
+      "subtypes_to_cover": ["HowTo"],
+      "notes": "Step-by-step guides. Similar to Recipe but for non-food tasks."
+    }
+  },
+  "multi_type_combinations": {
+    "description": "Many real pages need multiple schema types. At least 30% of training examples should contain 2+ types.",
+    "common_combos": [
+      ["LocalBusiness", "BreadcrumbList"],
+      ["Product", "Offer", "BreadcrumbList"],
+      ["Product", "AggregateRating", "Review"],
+      ["Article", "Person", "Organization", "BreadcrumbList"],
+      ["Recipe", "Person", "NutritionInformation"],
+      ["Event", "Place", "Offer"],
+      ["LocalBusiness", "FAQPage"],
+      ["LocalBusiness", "Service", "Offer"],
+      ["Organization", "WebSite", "SearchAction"],
+      ["JobPosting", "Organization"],
+      ["Course", "Organization", "Offer"]
+    ]
+  }
+}
