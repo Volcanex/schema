@@ -105,9 +105,28 @@ Extract EVERY piece of information visible in the screenshot or present in the H
 11. Include BreadcrumbList if breadcrumb navigation is visible on the page.
 12. When multiple schemas apply to a page, return them ALL in an array.
 
-## Common Irish/UK Business Patterns
-Since many target websites are Irish SMEs:
-- Phone numbers: use international format +353...
-- Addresses: include Eircode (Irish postal code) if visible
-- Currency: EUR for Irish, GBP for UK
-- VAT/Company registration numbers: include if visible via additionalProperty
+## English-Speaking Web Patterns
+Target websites span the full English-speaking web. Adapt to locale signals visible on the page:
+
+### Currency & Prices
+- Use the currency shown on the page (USD, GBP, EUR, CAD, AUD, NZD, etc.)
+- Default to USD if no currency is shown and no locale signals exist
+- Always populate priceCurrency alongside price
+
+### Address & Postal Formats
+- US: state abbreviation + ZIP code (e.g. "CA 94103")
+- UK: full postcode (e.g. "SW1A 1AA")
+- Ireland: Eircode (e.g. "D02 AF30")
+- Canada: province + postal code (e.g. "ON M5V 2T6")
+- Australia/NZ: state/territory + postcode
+
+### Phone Numbers
+- Always use international format: +1 (US/CA), +44 (UK), +353 (IE), +61 (AU), +64 (NZ)
+- Infer country code from address or domain TLD if not explicit
+
+### Business Registration
+- Include VAT / company registration numbers via additionalProperty if visible
+- UK: Company number (Companies House), VAT number
+- IE: CRO number, VAT IE number
+- US: EIN or state registration if shown
+- AU: ABN/ACN if shown
