@@ -19,35 +19,28 @@ OUT     = Path(__file__).parent.parent / 'data' / 'raw' / 'cc_candidate_urls.jso
 # (url_pattern, probable_type, per_page_limit)
 # Only TLDs where path-filtered queries don't time out
 QUERIES = [
-    # UK
-    ('*.co.uk/menu*',          'Restaurant',    5_000),
-    ('*.co.uk/recipe*',        'Recipe',        5_000),
-    ('*.co.uk/events/*',       'Event',         5_000),
-    ('*.co.uk/jobs/*',         'JobPosting',    5_000),
-    ('*.co.uk/faq*',           'FAQPage',       3_000),
-    ('*.co.uk/accommodation*', 'Hotel',         2_000),
-    ('*.co.uk/courses/*',      'Course',        2_000),
-    ('*.co.uk/products/*',     'Product',       5_000),
-    ('*.co.uk/blog/*',         'Article',       5_000),
-    ('*.co.uk/about*',         'LocalBusiness', 8_000),
-    ('*.co.uk/services*',      'LocalBusiness', 8_000),
-    # Ireland
-    ('*.ie/menu*',             'Restaurant',    2_000),
-    ('*.ie/events/*',          'Event',         2_000),
-    ('*.ie/jobs/*',            'JobPosting',    2_000),
-    ('*.ie/faq*',              'FAQPage',       1_000),
-    ('*.ie/products/*',        'Product',       2_000),
-    ('*.ie/blog/*',            'Article',       2_000),
-    ('*.ie/about*',            'LocalBusiness', 3_000),
-    ('*.ie/services*',         'LocalBusiness', 3_000),
+    # UK — path patterns, small limits to avoid 504
+    ('*.co.uk/menu*',          'Restaurant',    1_000),
+    ('*.co.uk/recipe*',        'Recipe',        1_000),
+    ('*.co.uk/events/*',       'Event',         1_000),
+    ('*.co.uk/jobs/*',         'JobPosting',    1_000),
+    ('*.co.uk/faq*',           'FAQPage',         800),
+    ('*.co.uk/accommodation*', 'Hotel',           500),
+    ('*.co.uk/courses/*',      'Course',          500),
+    ('*.co.uk/products/*',     'Product',       1_000),
+    ('*.co.uk/blog/*',         'Article',       1_000),
+    ('*.co.uk/about*',         'LocalBusiness', 2_000),
+    ('*.co.uk/services*',      'LocalBusiness', 2_000),
+    # Ireland — whole TLD manageable size
+    ('*.ie',                   'LocalBusiness', 5_000),
     # Canada
-    ('*.ca/menu*',             'Restaurant',    3_000),
-    ('*.ca/events/*',          'Event',         3_000),
-    ('*.ca/jobs/*',            'JobPosting',    3_000),
-    ('*.ca/recipe*',           'Recipe',        2_000),
-    ('*.ca/products/*',        'Product',       3_000),
-    ('*.ca/blog/*',            'Article',       3_000),
-    ('*.ca/about*',            'LocalBusiness', 4_000),
+    ('*.ca/menu*',             'Restaurant',      800),
+    ('*.ca/events/*',          'Event',           800),
+    ('*.ca/jobs/*',            'JobPosting',      800),
+    ('*.ca/recipe*',           'Recipe',          500),
+    ('*.ca/products/*',        'Product',         800),
+    ('*.ca/blog/*',            'Article',         800),
+    ('*.ca/about*',            'LocalBusiness', 1_000),
 ]
 
 def query_cdx(url_pattern: str, limit: int, retries: int = 3) -> list[dict]:
@@ -60,13 +53,8 @@ def query_cdx(url_pattern: str, limit: int, retries: int = 3) -> list[dict]:
     }
     for attempt in range(retries):
         try:
-            r = requests.get(CDX_URL, params=params, timeout=60)
-            if r.status_code == 504:
-                print(f'    504 timeout on {url_pattern}, skipping')
-                return []
-            if r.status_code != 200:
-                print(f'    HTTP {r.status_code} on {url_pattern}')
-                return []
+            r = requests.get(CDX_URL, params=params, timeout=90)
+            # Parse whatever results we got (even 504 can return partial results)
             results = []
             for line in r.text.strip().split('\n'):
                 if not line:
@@ -75,10 +63,19 @@ def query_cdx(url_pattern: str, limit: int, retries: int = 3) -> list[dict]:
                     results.append(json.loads(line))
                 except Exception:
                     pass
+            if r.status_code == 504 and not results:
+                print(f'    504 + no results on {url_pattern}, skipping')
+                return []
+            if r.status_code not in (200, 504):
+                print(f'    HTTP {r.status_code} on {url_pattern}')
+                if attempt < retries - 1:
+                    time.sleep(10 * (attempt + 1))
+                    continue
+                return results
             return results
         except requests.Timeout:
             print(f'    Timeout attempt {attempt+1}/{retries} for {url_pattern}')
-            time.sleep(5 * (attempt + 1))
+            time.sleep(10 * (attempt + 1))
     return []
 
 def main():
