@@ -39,8 +39,8 @@ FETCH_CONCURRENCY = 100
 FETCH_TIMEOUT     = 8       # seconds
 MIN_TEXT_CHARS    = 400
 MAX_HTML_CHARS    = 200_000
-TARGET_PAGES      = 10_000  # final output size
-SCREENSHOT_BATCH  = 50      # pages per Playwright browser session
+TARGET_PAGES      = 20_000  # final output size
+SCREENSHOT_WORKERS = 4      # parallel Playwright browsers (safe for 16GB RAM)
 
 HEADERS = {
     'User-Agent':      'Mozilla/5.0 (compatible; SchemaBot/1.0; +https://github.com/Volcanex/schema)',
@@ -88,7 +88,7 @@ def quality_ok(html: str) -> bool:
 
 # ── stage 1: async fetch ─────────────────────────────────────────────────────
 async def fetch_one(client: httpx.AsyncClient, record: dict,
-                    sem: asyncio.Semaphore) -> dict | None:
+                    sem: asyncio.Semaphore):
     url   = record['url']
     cache = html_cache_path(url)
 
@@ -132,38 +132,62 @@ async def fetch_all(records: list[dict]) -> list[dict]:
                 print(f'  fetched {done:,}/{total:,}  ok={len(results):,}', flush=True)
     return results
 
-# ── stage 2: screenshot ───────────────────────────────────────────────────────
-async def screenshot_batch_run(records: list[dict]) -> list[dict]:
+# ── stage 2: parallel screenshots ─────────────────────────────────────────────
+async def screenshot_worker(records: list[dict], shared: dict,
+                            lock: asyncio.Lock) -> list[dict]:
+    """Single Playwright worker processing its chunk of records."""
     results = []
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        ctx     = await browser.new_context(
+        ctx = await browser.new_context(
             viewport={'width': 1280, 'height': 900},
             user_agent=HEADERS['User-Agent'],
         )
-        for i, rec in enumerate(records):
+        for rec in records:
             url  = rec['url']
             path = shot_cache_path(url)
+            ok = False
 
             if path.exists():
                 results.append({**rec, 'screenshot_path': str(path)})
-                continue
+                ok = True
+            else:
+                page = await ctx.new_page()
+                try:
+                    await page.goto(url, timeout=12_000, wait_until='domcontentloaded')
+                    await page.screenshot(path=str(path), full_page=False)
+                    results.append({**rec, 'screenshot_path': str(path)})
+                    ok = True
+                except Exception:
+                    pass
+                finally:
+                    await page.close()
 
-            page = await ctx.new_page()
-            try:
-                await page.goto(url, timeout=12_000, wait_until='domcontentloaded')
-                await page.screenshot(path=str(path), full_page=False)
-                results.append({**rec, 'screenshot_path': str(path)})
-            except Exception:
-                pass   # skip pages that fail to render
-            finally:
-                await page.close()
+            async with lock:
+                shared['done'] += 1
+                if ok:
+                    shared['ok'] += 1
+                if shared['done'] % 500 == 0 or shared['done'] == shared['total']:
+                    print(f'  screenshots {shared["done"]:,}/{shared["total"]:,}  '
+                          f'ok={shared["ok"]:,}', flush=True)
 
-            if (i + 1) % 100 == 0:
-                print(f'  screenshots {i+1:,}/{len(records):,}  ok={len(results):,}', flush=True)
-
+        await ctx.close()
         await browser.close()
     return results
+
+
+async def screenshot_all(records: list[dict]) -> list[dict]:
+    """Run SCREENSHOT_WORKERS parallel Playwright browsers."""
+    n = SCREENSHOT_WORKERS
+    chunk_size = max(1, (len(records) + n - 1) // n)
+    chunks = [records[i:i+chunk_size] for i in range(0, len(records), chunk_size)]
+    shared = {'done': 0, 'ok': 0, 'total': len(records)}
+    lock = asyncio.Lock()
+    print(f'  Launching {len(chunks)} parallel Playwright workers...', flush=True)
+    results_nested = await asyncio.gather(
+        *[screenshot_worker(chunk, shared, lock) for chunk in chunks]
+    )
+    return [page for worker_results in results_nested for page in worker_results]
 
 # ── main ──────────────────────────────────────────────────────────────────────
 async def main():
@@ -184,7 +208,7 @@ async def main():
             candidates.append(json.loads(line))
     print(f'Loaded {len(candidates):,} candidate URLs')
 
-    # Sample per type with 3x oversampling (filter will cull ~60%)
+    # Sample per type with 4x oversampling (filter will cull ~60%)
     by_type = {}
     for r in candidates:
         by_type.setdefault(r['schema_type'], []).append(r)
@@ -192,14 +216,14 @@ async def main():
     to_fetch = []
     for t, target in type_targets.items():
         pool = by_type.get(t, [])
-        n    = min(len(pool), target * 3)
+        n    = min(len(pool), target * 4)
         to_fetch.extend(random.sample(pool, n) if n < len(pool) else pool)
 
     # Also include types not in config
     known = set(type_targets)
     for t, pages in by_type.items():
         if t not in known:
-            to_fetch.extend(pages[:500])
+            to_fetch.extend(pages[:1000])
 
     random.shuffle(to_fetch)
     print(f'Fetching {len(to_fetch):,} URLs ({FETCH_CONCURRENCY} concurrent)…\n')
@@ -234,7 +258,7 @@ async def main():
 
     # ── stage 4: screenshots ──────────────────────────────────────────────────
     print('\n── Stage 4: Playwright screenshots ──────────────────────────────')
-    with_shots = await screenshot_batch_run(pre_shot)
+    with_shots = await screenshot_all(pre_shot)
     print(f'\nScreenshots: {len(with_shots):,} / {len(pre_shot):,} OK')
 
     # ── stage 5: save ─────────────────────────────────────────────────────────
