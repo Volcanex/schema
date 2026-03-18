@@ -72,12 +72,34 @@ def extract_text(html: str) -> str:
     text = re.sub(r'<[^>]+>', ' ', html)
     return re.sub(r'\s+', ' ', text).strip()
 
-def quality_ok(html: str) -> bool:
+# Domains known to be English — skip the stopword heuristic for these
+KNOWN_ENGLISH_DOMAINS = {
+    'yelp.com', 'yelp.co.uk', 'yelp.ie', 'yelp.ca', 'yelp.com.au',
+    'yell.com', 'goldenpages.ie',
+    'etsy.com', 'amazon.co.uk', 'amazon.com', 'ebay.co.uk', 'ebay.com',
+    'notonthehighstreet.com',
+    'eventbrite.co.uk', 'eventbrite.ie', 'eventbrite.com', 'eventbrite.ca',
+    'eventbrite.com.au', 'meetup.com',
+    'bbc.co.uk', 'theguardian.com', 'independent.co.uk', 'rte.ie',
+    'wikihow.com', 'checkatrade.com',
+    'tripadvisor.com', 'tripadvisor.co.uk',
+}
+
+
+def is_known_english(url: str) -> bool:
+    host = urlparse(url).netloc.lower()
+    return any(host == d or host.endswith('.' + d) for d in KNOWN_ENGLISH_DOMAINS)
+
+
+def quality_ok(html: str, url: str = '') -> bool:
     text = extract_text(html)
     if len(text) < MIN_TEXT_CHARS:
         return False
     if PARKED.search(text[:2000]):
         return False
+    # Skip English heuristic for known-English domains
+    if url and is_known_english(url):
+        return True
     # basic English heuristic (avoid importing langdetect for speed)
     # check for common English stopwords in first 500 chars
     sample = text[:500].lower()
@@ -236,7 +258,7 @@ async def main():
 
     # ── stage 2: quality filter ───────────────────────────────────────────────
     print('\n── Stage 2: Quality filter ──────────────────────────────────────')
-    filtered = [r for r in fetched if quality_ok(r.get('html', ''))]
+    filtered = [r for r in fetched if quality_ok(r.get('html', ''), r.get('url', ''))]
     print(f'Quality filter: {len(filtered):,} / {len(fetched):,} passed '
           f'({len(filtered)/len(fetched)*100:.0f}%)')
 
