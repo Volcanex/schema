@@ -58,16 +58,24 @@ def validate_jsonld(jsonld_str: str) -> dict:
 
     result["parsed"] = parsed
 
-    # 2. Handle @graph wrapper
-    if "@graph" in parsed:
+    # 2. Handle top-level list (array of schemas) or @graph wrapper
+    if isinstance(parsed, list):
+        if len(parsed) == 0:
+            result["errors"].append("Empty JSON array")
+            return result
+        entity = parsed[0]
+        parsed = entity  # use first entity as the root for context check
+    elif isinstance(parsed, dict) and "@graph" in parsed:
         entities = parsed["@graph"]
         if not isinstance(entities, list) or len(entities) == 0:
             result["errors"].append("@graph is empty or not a list")
             return result
-        # Validate first entity; in practice check all
         entity = entities[0]
-    else:
+    elif isinstance(parsed, dict):
         entity = parsed
+    else:
+        result["errors"].append(f"Unexpected JSON type: {type(parsed).__name__}")
+        return result
 
     # 3. Check @context
     context = entity.get("@context") or parsed.get("@context")
