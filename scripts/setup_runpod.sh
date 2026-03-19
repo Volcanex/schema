@@ -92,6 +92,12 @@ local = snapshot_download(
 print('Dataset downloaded to:', local)
 print('Train data at: /workspace/schema/data/processed/train.jsonl')
 "
+  # Untar screenshots if they came as a tarball
+  if [ -f "/workspace/schema/data/screenshots_v2.tar.gz" ] && [ ! -d "/workspace/schema/data/screenshots_v2" ]; then
+    echo "Extracting screenshots tarball..."
+    cd /workspace/schema/data && tar xzf screenshots_v2.tar.gz && rm screenshots_v2.tar.gz
+    echo "Screenshots extracted"
+  fi
 else
   echo "Training data already present at $DATA_DIR/train.jsonl"
 fi
