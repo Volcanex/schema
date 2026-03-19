@@ -59,7 +59,10 @@ Rules:
 - For Event: include name, startDate, location, organizer
 - For Product: include name, description, offers with price and currency
 - Do NOT invent data not present on the page
-- If the page clearly represents multiple schema types, output a @graph array"""
+- If the page clearly represents multiple schema types, output a @graph array
+- Keep output concise: use @id references instead of repeating nested objects
+- For long lists (e.g. recipeIngredient), include at most 20 items
+- Prefer a single well-populated entity over many sparse ones"""
 
 
 def load_pages():

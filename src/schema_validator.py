@@ -108,9 +108,13 @@ def validate_jsonld(jsonld_str: str) -> dict:
     type_config = config["priority_types"].get(primary_type, {})
     required = type_config.get("required", ["@type", "@context"])
 
+    root = result["parsed"]  # original top-level parsed object
     for req in required:
         prop = req.lstrip("@")
-        if f"@{prop}" not in entity and prop not in entity:
+        # Check both the entity and the root (for @graph-wrapped schemas)
+        in_entity = f"@{prop}" in entity or prop in entity
+        in_root = isinstance(root, dict) and (f"@{prop}" in root or prop in root)
+        if not in_entity and not in_root:
             result["errors"].append(f"Missing required property: {req}")
 
     # 6. Count meaningful properties (exclude @context, @type, @id)
