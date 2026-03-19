@@ -119,7 +119,7 @@ async def generate_one(client, page, semaphore, stats):
                     contents=contents,
                     config={
                         'system_instruction': SYSTEM_PROMPT,
-                        'max_output_tokens': 4096,
+                        'max_output_tokens': 8192,
                         'temperature': 0.1,
                     },
                 )
@@ -156,8 +156,21 @@ async def generate_one(client, page, semaphore, stats):
         open_braces = raw.count('{') - raw.count('}')
         open_brackets = raw.count('[') - raw.count(']')
         if open_braces > 0 or open_brackets > 0:
-            # Try closing with the right number of braces/brackets
-            raw += ']' * open_brackets + '}' * open_braces
+            # Find last complete key-value pair and truncate there
+            # Then close with correct braces
+            for trim_chars in [0, 50, 100, 200, 500]:
+                candidate = raw[:len(raw) - trim_chars] if trim_chars else raw
+                ob = candidate.count('{') - candidate.count('}')
+                oq = candidate.count('[') - candidate.count(']')
+                if ob >= 0 and oq >= 0:
+                    candidate = candidate.rstrip().rstrip(',')
+                    candidate += ']' * oq + '}' * ob
+                    try:
+                        json.loads(candidate)
+                        raw = candidate
+                        break
+                    except json.JSONDecodeError:
+                        continue
 
     # Validate
     validation = validate_jsonld(raw)
