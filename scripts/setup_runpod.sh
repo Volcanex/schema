@@ -93,11 +93,17 @@ print('Dataset downloaded to:', local)
 print('Train data at: /workspace/schema/data/processed/train.jsonl')
 "
   # Untar screenshots if they came as a tarball
-  if [ -f "/workspace/schema/data/screenshots_v2.tar.gz" ] && [ ! -d "/workspace/schema/data/screenshots_v2" ]; then
+  if [ -f "/workspace/schema/data/screenshots_v2.tar.gz" ]; then
     echo "Extracting screenshots tarball..."
     cd /workspace/schema/data && tar xzf screenshots_v2.tar.gz && rm screenshots_v2.tar.gz
     echo "Screenshots extracted"
   fi
+
+  # Fix screenshot paths in JSONL (home server -> RunPod)
+  echo "Fixing screenshot paths..."
+  cd /workspace/schema
+  sed -i 's|/home/gabriel/schema/|/workspace/schema/|g' data/processed/train.jsonl data/processed/eval.jsonl
+  echo "Paths fixed"
 else
   echo "Training data already present at $DATA_DIR/train.jsonl"
 fi
