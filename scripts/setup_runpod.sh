@@ -75,11 +75,11 @@ else
 fi
 
 # 8. Download training dataset from HuggingFace Hub
-# HF repo layout: data/train.jsonl, data/eval.jsonl, data/screenshots/*.png
-# We download to /workspace/schema so paths resolve as: /workspace/schema/data/train.jsonl
-DATA_DIR="/workspace/schema/data"
+# HF repo layout: data/processed/train.jsonl, data/processed/eval.jsonl, data/screenshots_v2/*.png
+# Downloaded to /workspace/schema so relative paths in JSONL resolve correctly
+DATA_DIR="/workspace/schema/data/processed"
 if [ ! -f "$DATA_DIR/train.jsonl" ]; then
-  echo "Downloading training dataset from HuggingFace Hub (~350MB)..."
+  echo "Downloading training dataset from HuggingFace Hub (~3.5GB)..."
   python -c "
 import os
 from huggingface_hub import snapshot_download
@@ -90,7 +90,7 @@ local = snapshot_download(
     local_dir='/workspace/schema',
 )
 print('Dataset downloaded to:', local)
-print('Train data at: /workspace/schema/data/train.jsonl')
+print('Train data at: /workspace/schema/data/processed/train.jsonl')
 "
 else
   echo "Training data already present at $DATA_DIR/train.jsonl"
