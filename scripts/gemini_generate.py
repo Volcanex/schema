@@ -119,7 +119,7 @@ async def generate_one(client, page, semaphore, stats):
                     contents=contents,
                     config={
                         'system_instruction': SYSTEM_PROMPT,
-                        'max_output_tokens': 2000,
+                        'max_output_tokens': 4096,
                         'temperature': 0.1,
                     },
                 )
@@ -144,6 +144,20 @@ async def generate_one(client, page, semaphore, stats):
     if raw.startswith('```'):
         lines = raw.split('\n')
         raw = '\n'.join(lines[1:-1] if lines[-1].strip() == '```' else lines[1:])
+
+    # Strip thinking tags if present (Gemini 2.5 Flash sometimes includes these)
+    if '<think>' in raw:
+        import re
+        raw = re.sub(r'<think>.*?</think>\s*', '', raw, flags=re.DOTALL).strip()
+
+    # Try to fix minor JSON truncation (missing closing braces)
+    raw = raw.rstrip()
+    if raw and raw[0] in '{[':
+        open_braces = raw.count('{') - raw.count('}')
+        open_brackets = raw.count('[') - raw.count(']')
+        if open_braces > 0 or open_brackets > 0:
+            # Try closing with the right number of braces/brackets
+            raw += ']' * open_brackets + '}' * open_braces
 
     # Validate
     validation = validate_jsonld(raw)
